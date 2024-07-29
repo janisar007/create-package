@@ -27,6 +27,11 @@ jobs:
         cd repo
         echo "Repository cloned to $(pwd)"
 
+    - name: Set up Go environment
+      uses: actions/setup-go@v4
+      with:
+        go-version: 'stable'
+
     - name: Install create-package
       run: |
         #!/usr/bin/env bash
