@@ -63,6 +63,10 @@ jobs:
         curl -L "https://ent.box.com/shared/static/j4d1bfe9uk1sb0i7zjvci0md9xmy41u4" -o ${HOME}/bin/pack
         chmod +x "${HOME}"/bin/pack
 
+    - name: Create buildpack directory
+      run: |
+        mkdir -p /path/to/buildpack
+
     - name: Set environment variables
       run: |
         export SOURCE_PATH=$(pwd)
