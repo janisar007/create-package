@@ -1,0 +1,96 @@
+name: Build Repository and Create Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo_url:
+        description: 'Repository URL'
+        required: true
+        type: string
+      version_input:
+        description: 'Version (e.g., 1.0.0)'
+        required: true
+        type: string
+      image_name:
+        description: 'Image Name for Pack Buildpack'
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout the repository
+      run: |
+        git clone ${{ github.event.inputs.repo_url }} repo
+        cd repo
+        echo "Repository cloned to $(pwd)"
+
+    - name: Install create-package
+      run: |
+        #!/usr/bin/env bash
+
+        set -euo pipefail
+
+        go install -ldflags="-s -w" github.com/paketo-buildpacks/libpak/cmd/create-package@latest
+    - uses: buildpacks/github-actions/setup-tools@v5.6.0
+      with:
+        crane-version: 0.19.1
+        yj-version: 5.1.0
+        
+    - name: Install pack
+      run: |
+        #!/usr/bin/env bash
+        # this is coming from a copy of https://github.com/buildpacks/pack/actions/runs/8118576298 stored on box
+        # TODO to revisit when the official one is out
+        set -euo pipefail
+
+        echo "Installing pack experimental"
+
+        mkdir -p "${HOME}"/bin
+        echo "${HOME}/bin" >> "${GITHUB_PATH}"
+
+        curl -L "https://ent.box.com/shared/static/j4d1bfe9uk1sb0i7zjvci0md9xmy41u4" -o ${HOME}/bin/pack
+        chmod +x "${HOME}"/bin/pack
+
+    - name: Set environment variables
+      run: |
+        export SOURCE_PATH=$(pwd)
+        export VERSION=${{ github.event.inputs.version_input }}
+        export MAJOR_VERSION=$(echo $VERSION | cut -d. -f1)
+        export MINOR_VERSION=$(echo $VERSION | cut -d. -f1-2)
+        export CGO_ENABLED=0
+        echo "SOURCE_PATH=$SOURCE_PATH"
+        echo "VERSION=$VERSION"
+        echo "MAJOR_VERSION=$MAJOR_VERSION"
+        echo "MINOR_VERSION=$MINOR_VERSION"
+
+    - name: Create package
+      run: |
+        create-package \
+          --source "$SOURCE_PATH" \
+          --destination "/path/to/buildpack" \
+          --version "$VERSION"
+
+    - name: Set more environment variables
+      run: |
+        export INCLUDE_DEPENDENCIES="false"
+        export OS="linux"
+        echo "INCLUDE_DEPENDENCIES=$INCLUDE_DEPENDENCIES"
+        echo "OS=$OS"
+
+    - name: Create package.toml
+      run: |
+        echo "[buildpack]" > "${HOME}/package.toml"
+        echo "uri = \"/path/to/buildpack\"" >> "${HOME}/package.toml"
+        echo "" >> "${HOME}/package.toml"
+        echo "[platform]" >> "${HOME}/package.toml"
+        echo "os = \"${OS}\"" >> "${HOME}/package.toml"
+        cat "${HOME}/package.toml"
+
+    - name: Pack buildpack package
+      run: |
+        pack buildpack package \
+          ${{ github.event.inputs.image_name }} \
+          --config ${HOME}/package.toml
