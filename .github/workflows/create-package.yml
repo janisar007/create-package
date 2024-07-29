@@ -66,6 +66,7 @@ jobs:
     - name: Create buildpack directory
       run: |
         mkdir -p ${HOME}/buildpack
+        echo "Buildpack directory created at ${HOME}/buildpack"
 
     - name: Set environment variables
       run: |
@@ -85,6 +86,15 @@ jobs:
           --source "$SOURCE_PATH" \
           --destination "${HOME}/buildpack" \
           --version "$VERSION"
+
+    - name: Verify buildpack creation
+      run: |
+        echo "Verifying buildpack creation at ${HOME}/buildpack"
+        ls -la ${HOME}/buildpack
+        if [ ! -d "${HOME}/buildpack" ]; then
+          echo "Buildpack directory not found!"
+          exit 1
+        fi
 
     - name: Set more environment variables
       run: |
