@@ -38,7 +38,11 @@ jobs:
       with:
         crane-version: 0.19.1
         yj-version: 5.1.0
-        
+
+    - name: Export the path for create package
+      run: |
+        export PATH="$PATH:$HOME/go/bin"
+
     - name: Install pack
       run: |
         #!/usr/bin/env bash
